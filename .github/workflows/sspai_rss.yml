@@ -1,0 +1,41 @@
+name: Scrape SSPAI and Deploy RSS
+
+on:
+  schedule:
+    # 每天每 6 小时运行一次 (UTC 时间)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  scrape_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Install Playwright Browsers
+      run: |
+        python -m playwright install --with-deps chromium
+
+    - name: Run Scraper
+      run: |
+        python sspai_scraper.py
+
+    - name: Deploy to CloudBase Hosting
+      run: |
+        # 安装 CloudBase CLI
+        npm install -g @cloudbase/cli
+        # 使用密钥登录并部署
+        tcb login --apiKeyId ${{ secrets.TCB_SECRET_ID }} --apiKey ${{ secrets.TCB_SECRET_KEY }}
+        tcb hosting deploy sspai_updates.xml sspai_updates.xml -e ${{ secrets.TCB_ENV_ID }}

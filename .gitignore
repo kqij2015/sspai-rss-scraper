@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+build/
+dist/
+
+# Logs
+*.log
+
+# Debug/Temp files
+sspai_debug.html
+sspai_updates.xml
+analyze_sspai.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CloudBase / TCB
+.tcb/
+cloudbaserc.json
