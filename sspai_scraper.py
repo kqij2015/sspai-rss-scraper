@@ -6,54 +6,54 @@ import os
 
 async def scrape_sspai():
     async with async_playwright() as p:
+        print("Launching browser...")
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
         
         url = "https://sspai.com/u/sa2syl7a/updates"
         print(f"Loading {url}...")
-        await page.goto(url, wait_until="networkidle")
+        try:
+            await page.goto(url, wait_until="networkidle", timeout=60000)
+        except Exception as e:
+            print(f"Error loading page: {e}")
+            await browser.close()
+            return []
         
         # Scroll down to ensure content is loaded
+        print("Scrolling page...")
         await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        await asyncio.sleep(2)
+        await asyncio.sleep(3)
         
-        # Save page content for debugging
-        content = await page.content()
-        with open("sspai_debug.html", "w", encoding="utf-8") as f:
-            f.write(content)
-
         # Extract items
+        print("Extracting items from page...")
         items = await page.evaluate("""() => {
             const results = [];
-            // sspai update items usually have specific classes
-            // Let's try to find all links that look like article links
-            const cards = document.querySelectorAll('.user-update-item, .update-card, article');
-            console.log('Found ' + cards.length + ' cards');
+            // Try different selectors for sspai updates
+            const cards = document.querySelectorAll('.user-update-item, .update-card, article, .article-card');
             
             cards.forEach(card => {
-                const titleEl = card.querySelector('.title, h3, .article-title, .nickname');
+                const titleEl = card.querySelector('.title, h3, .article-title, .nickname, .content');
                 const linkEl = card.querySelector('a[href*="/post/"], a[href*="/article/"]');
                 const dateEl = card.querySelector('.time, .date, .created-at');
                 
                 if (titleEl && linkEl) {
                     results.push({
-                        title: titleEl.innerText.trim(),
+                        title: titleEl.innerText.trim().replace(/\\n/g, ' '),
                         link: linkEl.href,
                         date: dateEl ? dateEl.innerText.trim() : ''
                     });
                 }
             });
             
-            // Fallback: search for all article titles
+            // Fallback: search for all links that look like posts
             if (results.length === 0) {
-                const allLinks = document.querySelectorAll('a');
-                allLinks.forEach(link => {
+                document.querySelectorAll('a').forEach(link => {
                     const href = link.getAttribute('href') || '';
                     if (href.includes('/post/') || href.includes('/article/')) {
                         const title = link.innerText.trim();
                         if (title.length > 5) {
                             results.push({
-                                title: title,
+                                title: title.replace(/\\n/g, ' '),
                                 link: link.href,
                                 date: ''
                             });
@@ -64,6 +64,7 @@ async def scrape_sspai():
             return results;
         }""")
         
+        print(f"Found {len(items)} raw items.")
         await browser.close()
         return items
 
